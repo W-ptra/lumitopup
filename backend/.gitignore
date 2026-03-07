@@ -1,0 +1,5 @@
+.env
+build_errors.txt
+*.exe
+*.txt
+*.log
