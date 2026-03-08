@@ -108,6 +108,7 @@ func CreatePaymentRequest(
 		}
 	}
 
+	link = fmt.Sprintf("https://miruu-18287.mayar.shop/select-channel/%s", mayarOrderID)
 	if link == "" {
 		return "", errors.New("payment link not found in response")
 	}
