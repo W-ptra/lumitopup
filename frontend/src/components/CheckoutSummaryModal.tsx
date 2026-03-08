@@ -3,12 +3,6 @@ import { useState } from "react";
 import type { ProductResponse } from "../service/gameService";
 import { transactionService } from "../service/transactionService";
 
-type PaymentMethod = {
-  id: string;
-  name: string;
-  price: number;
-};
-
 type Props = {
   open: boolean;
   onClose: () => void;
@@ -16,7 +10,6 @@ type Props = {
   uuid: string;
   server: string;
   email?: string;
-  payment?: PaymentMethod;
   onConfirm: () => void;
 };
 
@@ -27,35 +20,35 @@ export default function CheckoutSummaryModal({
   uuid,
   server,
   email,
-  payment,
 }: Props) {
   if (!open) return null;
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleProcessOrder = async () => {
-    if (!payment) return;
-
     try {
       setIsSubmitting(true);
       const res = await transactionService.create({
         product_id: product.id,
-        payment_method: payment.id.toUpperCase(),
+        payment_method: "MAYAR",
         game_uid: uuid,
         server: server,
         email: email || undefined,
       });
 
-      // Redirect user to the detail page, where they can click the payment URL or scan QRIS
-      navigate(`/transaction/${res.id}`);
+      // Redirect user directly to Mayar Payment URL
+      if (res.payment_url) {
+        window.location.href = res.payment_url;
+      } else {
+        // Fallback if no payment url
+        navigate(`/transaction/${res.id}`);
+      }
 
     } catch (error: any) {
       alert(error.message || "Gagal membuat transaksi");
       setIsSubmitting(false);
     }
   };
-
-  const serviceFee = payment ? payment.price - product.price : 0;
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-4 backdrop-blur-sm">
@@ -95,28 +88,12 @@ export default function CheckoutSummaryModal({
             </div>
           )}
 
-          <div className="flex justify-between gap-4">
-            <span className="text-gray-500">Metode Bayar</span>
-            <span className="font-bold text-right text-gray-800">
-              {payment?.name}
-            </span>
-          </div>
-
-          {serviceFee > 0 && (
-            <div className="flex justify-between gap-4">
-              <span className="text-gray-500">Biaya Layanan</span>
-              <span className="font-medium text-right text-gray-800">
-                + Rp {serviceFee.toLocaleString("id-ID")}
-              </span>
-            </div>
-          )}
-
           <hr className="border-dashed" />
 
           <div className="flex justify-between text-base font-bold">
             <span>Total Bayar</span>
             <span className="text-[#7491F7]">
-              Rp {payment?.price.toLocaleString("id-ID")}
+              Rp {product.price.toLocaleString("id-ID")}
             </span>
           </div>
         </div>
@@ -149,7 +126,7 @@ export default function CheckoutSummaryModal({
             {isSubmitting ? (
               <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
             ) : (
-              "Nge-TopUp Sekarang!"
+              "Lanjut Pembayaran"
             )}
           </button>
         </div>

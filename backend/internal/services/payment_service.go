@@ -7,13 +7,21 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/w-ptra/lumitopup/internal/config"
 	"github.com/w-ptra/lumitopup/internal/utils"
 )
 
-// CreatePaymentRequest calls Mayar API to get a payment URL for the user.
-func CreatePaymentRequest(orderID string, amount int64, customerEmail string, description string) (string, error) {
+func CreatePaymentRequest(
+	internalTxID string,
+	mayarOrderID string,
+	amount int64,
+	email string,
+	productTitle string,
+	gameName string,
+	expiredAt time.Time,
+) (string, error) {
 	if config.AppConfig.MayarAPIKey == "" {
 		return "", errors.New("mayar api key not configured")
 	}
@@ -23,12 +31,29 @@ func CreatePaymentRequest(orderID string, amount int64, customerEmail string, de
 		url = "https://api.mayar.club/hl/v1/payment/create"
 	}
 
+	if email == "" {
+		email = "no-reply@lumitopup.com"
+	}
+
+	redirectUrl := fmt.Sprintf("%s/transaction/%s", config.AppConfig.FrontendURL, internalTxID)
+
 	payload := map[string]interface{}{
-		"name":        "Customer",
-		"email":       customerEmail,
+		"name": "Customer",
+		"items": []map[string]interface{}{
+			{
+				"name":        productTitle,
+				"description": gameName,
+				"quantity":    1,
+				"rate":        amount,
+			},
+		},
+		"email":       email,
 		"amount":      amount,
-		"description": description,
-		"mobile":      "08111111111", // Dummy mobile
+		"mobile":      "08111111111",
+		"redirectUrl": redirectUrl,
+		"description": "Order " + productTitle,
+		"expiredAt":   expiredAt.Format(time.RFC3339),
+		"id":          mayarOrderID,
 	}
 
 	body, err := json.Marshal(payload)
@@ -40,7 +65,7 @@ func CreatePaymentRequest(orderID string, amount int64, customerEmail string, de
 	if err != nil {
 		return "", err
 	}
-	
+
 	req.Header.Set("Authorization", "Bearer "+config.AppConfig.MayarAPIKey)
 	req.Header.Set("Content-Type", "application/json")
 
@@ -87,7 +112,7 @@ func CreatePaymentRequest(orderID string, amount int64, customerEmail string, de
 		return "", errors.New("payment link not found in response")
 	}
 
-	utils.Info("Mayar payment created", "order_id", orderID, "url", link)
+	utils.Info("Mayar payment created", "order_id", mayarOrderID, "url", link)
 	return link, nil
 }
 

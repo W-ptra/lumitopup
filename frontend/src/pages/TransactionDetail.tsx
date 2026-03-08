@@ -4,7 +4,7 @@ import MainLayout from "../layouts/MainLayout";
 import { Check, X, Clock, RotateCw, Headphones, ChevronRight, ExternalLink } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { transactionService } from "../service/transactionService";
-import QRCode from "react-qr-code";
+
 
 function TransactionDetail() {
     const { id } = useParams<{ id: string }>();
@@ -112,10 +112,7 @@ function TransactionDetail() {
                                 <span className="text-gray-400 text-xs md:text-sm font-medium">ID Transaksi</span>
                                 <span className="text-gray-700 font-mono text-[10px] md:text-xs font-bold bg-gray-50 px-2 py-1 rounded">{transaction.id}</span>
                             </div>
-                            <div className="flex justify-between items-center gap-4">
-                                <span className="text-gray-400 text-xs md:text-sm font-medium">Mayar Order ID</span>
-                                <span className="text-indigo-600 font-mono text-[10px] md:text-xs font-bold bg-indigo-50 px-2 py-1 rounded">{transaction.mayar_order_id}</span>
-                            </div>
+
                             <div className="flex justify-between items-start gap-4">
                                 <span className="text-gray-400 text-xs md:text-sm font-medium">Item & Game</span>
                                 <div className="text-right">
@@ -134,10 +131,22 @@ function TransactionDetail() {
                                         initial={{ opacity: 0, height: 0 }}
                                         animate={{ opacity: 1, height: "auto" }}
                                         exit={{ opacity: 0, height: 0 }}
-                                        className="bg-red-50 p-4 rounded-2xl border border-red-100 mt-2"
+                                        className="bg-red-50 p-4 rounded-2xl border border-red-100 mt-2 space-y-3"
                                     >
-                                        <p className="text-red-500 text-[10px] font-bold uppercase tracking-widest mb-1">Pesan Error</p>
-                                        <p className="text-red-700 text-xs md:text-sm font-medium leading-relaxed">{transaction.failure_reason || "Gagal diproses oleh sistem pembayaran."}</p>
+                                        <div>
+                                            <p className="text-red-500 text-[10px] font-bold uppercase tracking-widest mb-1">Pesan Error</p>
+                                            <p className="text-red-700 text-xs md:text-sm font-medium leading-relaxed">{transaction.failure_reason || "Gagal diproses oleh sistem pembayaran."}</p>
+                                        </div>
+                                        {transaction.payment_url && (
+                                            <button
+                                                onClick={() => {
+                                                    window.location.href = transaction.payment_url;
+                                                }}
+                                                className="flex items-center justify-center w-full gap-2 bg-red-600 text-white py-2.5 rounded-xl font-bold text-xs shadow-sm shadow-red-200 hover:brightness-110 transition cursor-pointer"
+                                            >
+                                                Buka Portal Pembayaran Lagi <ExternalLink size={14} />
+                                            </button>
+                                        )}
                                     </motion.div>
                                 )}
                             </AnimatePresence>
@@ -145,54 +154,17 @@ function TransactionDetail() {
 
                         {status === "PENDING" && (
                             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4 mt-2">
-                                {transaction.qr_string ? (
-                                    <div className="p-6 bg-white border border-gray-100 rounded-2xl shadow-sm space-y-4 flex flex-col items-center">
-                                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Scan QRIS Untuk Membayar</p>
-                                        <div className="p-4 bg-white border-4 border-[#7491F7]/5 rounded-3xl">
-                                            <QRCode value={transaction.qr_string} size={200} />
-                                        </div>
-                                        <div className="text-center space-y-1">
-                                            <p className="text-[10px] text-gray-500 font-medium leading-tight">
-                                                Gunakan aplikasi e-wallet apa pun <br />
-                                                (Gopay, OVO, DANA, ShopeePay, dll)
-                                            </p>
-                                        </div>
-
-                                        {transaction.payment_url && (
-                                            <div className="w-full pt-4 border-t border-gray-100">
-                                                <p className="text-[9px] text-indigo-400 font-bold uppercase text-center mb-2 tracking-widest">Simulator URL (Copy This)</p>
-                                                <div className="flex gap-2">
-                                                    <input 
-                                                        readOnly 
-                                                        value={transaction.payment_url} 
-                                                        className="flex-1 text-[10px] bg-gray-50 p-2 rounded border border-gray-200 text-gray-500 font-mono truncate"
-                                                    />
-                                                    <button 
-                                                        onClick={() => {
-                                                            navigator.clipboard.writeText(transaction.payment_url);
-                                                            alert("Link disalin! Paste ke simulator Mayar.");
-                                                        }}
-                                                        className="bg-indigo-500 text-white text-[10px] px-3 rounded font-bold hover:bg-indigo-600 transition"
-                                                    >
-                                                        Copy
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                ) : (
-                                    <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-2xl space-y-3">
-                                        <p className="text-xs text-indigo-800 font-medium text-center">Silakan selesaikan pembayaran melalui portal Mayar:</p>
-                                        <button
-                                            onClick={() => {
-                                                window.location.href = transaction.payment_url;
-                                            }}
-                                            className="flex items-center justify-center w-full gap-2 bg-[#7491F7] text-white py-3 rounded-xl font-bold text-sm shadow-md shadow-indigo-100 hover:brightness-110 transition cursor-pointer"
-                                        >
-                                            Buka Portal Pembayaran <ExternalLink size={16} />
-                                        </button>
-                                    </div>
-                                )}
+                                <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-2xl space-y-3">
+                                    <p className="text-xs text-indigo-800 font-medium text-center">Silakan selesaikan pembayaran melalui portal Mayar:</p>
+                                    <button
+                                        onClick={() => {
+                                            window.location.href = transaction.payment_url;
+                                        }}
+                                        className="flex items-center justify-center w-full gap-2 bg-[#7491F7] text-white py-3 rounded-xl font-bold text-sm shadow-md shadow-indigo-100 hover:brightness-110 transition cursor-pointer"
+                                    >
+                                        Buka Portal Pembayaran <ExternalLink size={16} />
+                                    </button>
+                                </div>
 
                                 <button
                                     onClick={() => refetch()}

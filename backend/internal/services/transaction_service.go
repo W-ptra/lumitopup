@@ -2,7 +2,6 @@ package services
 
 import (
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -24,31 +23,23 @@ func CreateTransaction(userID string, req dto.CreateTransactionRequest) (*dto.Tr
 	// 2. Generate unique internal IDs (Plain UUID)
 	internalTxID := uuid.NewString()
 
-	// Mayar requires unique Order IDs per attempt. Shortened to stay well under 50 char limit.
-	mayarOrderID := fmt.Sprintf("MID-%s-%d", internalTxID[:8], time.Now().Unix())
+	// Use full UUID for Mayar Order ID
+	mayarOrderID := internalTxID
 
-	// 3. Calculate Total Amount with Service Fees (Matching Frontend Logic)
-	// Bank Transfer: Rp 4.000, GoPay/E-wallet: 2%, QRIS: 0.7%
+	// 3. Amount
 	finalAmount := product.Price
-	method := req.PaymentMethod
-
-	switch method {
-	case "BNI", "BRI", "MANDIRI", "PERMATA":
-		finalAmount += 4000
-
-	case "GOPAY", "DANA", "OVO", "SHOPEEPAY":
-		// 2% fee
-		finalAmount = finalAmount * 102 / 100
-
-	case "QRIS":
-		// 0.7% fee
-		finalAmount = finalAmount * 1007 / 1000
-	}
-
-
+	expiredAt := time.Now().Add(15 * time.Minute)
 
 	// 5. Call Mayar Payment Gateway
-	paymentURL, err := CreatePaymentRequest(mayarOrderID, finalAmount, req.Email, "Order "+product.Title)
+	paymentURL, err := CreatePaymentRequest(
+		internalTxID,
+		mayarOrderID,
+		finalAmount,
+		req.Email,
+		product.Title,
+		product.Game.Name,
+		expiredAt,
+	)
 	if err != nil {
 		utils.Error("Mayar creation failed", err, "order_id", mayarOrderID)
 		return nil, errors.New("failed to initialize payment gateway")
@@ -58,22 +49,22 @@ func CreateTransaction(userID string, req dto.CreateTransactionRequest) (*dto.Tr
 
 	// 4. Save to DB — status PENDING, expires in 15 mins
 	tx := models.Transaction{
-		ID:              internalTxID,
-		UserID:          userID,
-		ProductID:       product.ID,
-		GameName:        product.Game.Name,
-		ProductTitle:    product.Title,
-		Amount:          finalAmount,
-		PaymentMethod:   req.PaymentMethod,
-		MayarOrderID: mayarOrderID,
-		PaymentURL:      paymentURL,
-		PaymentToken:    snapToken,
-		QRString:        qrString,
-		GameUID:         req.GameUID,
-		Server:          req.Server,
-		Email:           req.Email,
-		Status:          "PENDING",
-		ExpiredAt:       time.Now().Add(15 * time.Minute),
+		ID:            internalTxID,
+		UserID:        userID,
+		ProductID:     product.ID,
+		GameName:      product.Game.Name,
+		ProductTitle:  product.Title,
+		Amount:        finalAmount,
+		PaymentMethod: "MAYAR", // Or keep req.PaymentMethod if frontend still sends it
+		MayarOrderID:  mayarOrderID,
+		PaymentURL:    paymentURL,
+		PaymentToken:  snapToken,
+		QRString:      qrString,
+		GameUID:       req.GameUID,
+		Server:        req.Server,
+		Email:         req.Email,
+		Status:        "PENDING",
+		ExpiredAt:     expiredAt,
 	}
 
 	if err := database.DB.Create(&tx).Error; err != nil {
@@ -144,21 +135,21 @@ func GetAllTransactions() ([]dto.AdminTransactionResponse, error) {
 	var res []dto.AdminTransactionResponse
 	for _, t := range txs {
 		res = append(res, dto.AdminTransactionResponse{
-			ID:              t.ID,
-			UserID:          t.UserID,
-			GameName:        t.GameName,
-			ProductTitle:    t.ProductTitle,
-			Amount:          t.Amount,
-			PaymentMethod:   t.PaymentMethod,
-			MayarOrderID: t.MayarOrderID,
-			GameUID:         t.GameUID,
-			Server:          t.Server,
-			Email:           t.Email,
-			Status:          t.Status,
-			FailureReason:   t.FailureReason,
-			ExpiredAt:       t.ExpiredAt,
-			CreatedAt:       t.CreatedAt,
-			UpdatedAt:       t.UpdatedAt,
+			ID:            t.ID,
+			UserID:        t.UserID,
+			GameName:      t.GameName,
+			ProductTitle:  t.ProductTitle,
+			Amount:        t.Amount,
+			PaymentMethod: t.PaymentMethod,
+			MayarOrderID:  t.MayarOrderID,
+			GameUID:       t.GameUID,
+			Server:        t.Server,
+			Email:         t.Email,
+			Status:        t.Status,
+			FailureReason: t.FailureReason,
+			ExpiredAt:     t.ExpiredAt,
+			CreatedAt:     t.CreatedAt,
+			UpdatedAt:     t.UpdatedAt,
 		})
 	}
 	return res, nil
@@ -226,21 +217,21 @@ func UpdateFromWebhook(mayarOrderID, status, failureReason string) error {
 
 func mapTransactionToDetailResponse(tx models.Transaction) dto.TransactionDetailResponse {
 	return dto.TransactionDetailResponse{
-		ID:              tx.ID,
-		GameName:        tx.GameName,
-		ProductTitle:    tx.ProductTitle,
-		Amount:          tx.Amount,
-		PaymentMethod:   tx.PaymentMethod,
-		PaymentURL:      tx.PaymentURL,
-		PaymentToken:    tx.PaymentToken,
-		QRString:        tx.QRString,
-		GameUID:         tx.GameUID,
-		Server:          tx.Server,
-		Email:           tx.Email,
-		Status:          tx.Status,
-		FailureReason:   tx.FailureReason,
-		MayarOrderID: tx.MayarOrderID,
-		ExpiredAt:       tx.ExpiredAt,
-		CreatedAt:       tx.CreatedAt,
+		ID:            tx.ID,
+		GameName:      tx.GameName,
+		ProductTitle:  tx.ProductTitle,
+		Amount:        tx.Amount,
+		PaymentMethod: tx.PaymentMethod,
+		PaymentURL:    tx.PaymentURL,
+		PaymentToken:  tx.PaymentToken,
+		QRString:      tx.QRString,
+		GameUID:       tx.GameUID,
+		Server:        tx.Server,
+		Email:         tx.Email,
+		Status:        tx.Status,
+		FailureReason: tx.FailureReason,
+		MayarOrderID:  tx.MayarOrderID,
+		ExpiredAt:     tx.ExpiredAt,
+		CreatedAt:     tx.CreatedAt,
 	}
 }

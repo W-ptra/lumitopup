@@ -3,10 +3,9 @@ import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import MainLayout from "../layouts/MainLayout";
 import ProductOptionCard from "../components/ProductOptionCard";
-import PaymentOptionCard from "../components/PaymentOptionCard";
 import CheckoutSummaryModal from "../components/CheckoutSummaryModal";
 import { gameService } from "../service/gameService";
-import type { ProductResponse, Charge } from "../service/gameService";
+import type { ProductResponse } from "../service/gameService";
 import { useAuthStore } from "../utils/authStore";
 
 export default function Product() {
@@ -21,14 +20,12 @@ export default function Product() {
 
   /* ---------------- STATE ---------------- */
   const [selectedProduct, setSelectedProduct] = useState<ProductResponse | null>(null);
-  const [paymentId, setPaymentId] = useState("");
   const [uuid, setUuid] = useState("");
   const [server, setServer] = useState("");
   const [email, setEmail] = useState("");
   const [showSummary, setShowSummary] = useState(false);
 
-  const selectedPayment = game?.payment_methods.find(p => p.id === paymentId);
-  const disabled = !selectedProduct || !paymentId || !uuid || !server;
+  const disabled = !selectedProduct || !uuid || !server;
 
   const handleOpenSummary = () => {
     if (!user) {
@@ -62,13 +59,6 @@ export default function Product() {
       </MainLayout>
     );
   }
-
-  const getCalculatePrice = (basePrice: number, charge: Charge) => {
-    if (charge.type === "FIXED") {
-        return basePrice + charge.value;
-    }
-    return Math.round(basePrice + (basePrice * charge.value / 100));
-  };
 
   return (
     <MainLayout>
@@ -133,30 +123,7 @@ export default function Product() {
           <p className="text-xs text-gray-400 font-medium italic">Invoice akan dikirim ke email ini jika diisi.</p>
         </section>
 
-        {/* PAYMENTS */}
-        <section className={`${!selectedProduct ? "opacity-50 cursor-not-allowed" : ""} bg-white border rounded-2xl p-4 transition-all duration-300`}>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-[#7491F7]">Metode Pembayaran</h2>
-            {!selectedProduct && (
-              <span className="text-[10px] bg-amber-50 text-amber-600 px-2 py-1 rounded-full border border-amber-100 font-bold animate-pulse">
-                Pilih Produk Terlebih Dahulu
-              </span>
-            )}
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-            {game?.payment_methods.map(m => (
-              <PaymentOptionCard
-                key={m.id}
-                method={{ 
-                  ...m, 
-                  price: selectedProduct ? getCalculatePrice(selectedProduct.price, m.charge) : 0 
-                }}
-                selected={paymentId === m.id}
-                onSelect={(id) => selectedProduct && setPaymentId(id)}
-              />
-            ))}
-          </div>
-        </section>
+
 
         {/* DESKTOP BUY BAR — NORMAL FLOW */}
         <div className="hidden md:block bg-white border rounded-2xl p-4 sticky bottom-4 shadow-lg border-[#7491F7]/30">
@@ -164,8 +131,8 @@ export default function Product() {
             <div>
               <p className="text-xs text-gray-500 font-medium">Total Bayar</p>
               <p className="text-2xl font-bold text-[#7491F7]">
-                {selectedProduct && selectedPayment
-                  ? `Rp ${getCalculatePrice(selectedProduct.price, selectedPayment.charge).toLocaleString("id-ID")}`
+                {selectedProduct
+                  ? `Rp ${selectedProduct.price.toLocaleString("id-ID")}`
                   : "-"}
               </p>
             </div>
@@ -186,8 +153,8 @@ export default function Product() {
           <div className="flex-1">
             <p className="text-[10px] text-gray-500 font-medium">Total Pembayaran</p>
             <p className="font-bold text-[#7491F7]">
-              {selectedProduct && selectedPayment
-                ? `Rp ${getCalculatePrice(selectedProduct.price, selectedPayment.charge).toLocaleString("id-ID")}`
+              {selectedProduct
+                ? `Rp ${selectedProduct.price.toLocaleString("id-ID")}`
                 : "-"}
             </p>
           </div>
@@ -209,7 +176,6 @@ export default function Product() {
           product={selectedProduct}
           uuid={uuid}
           server={server}
-          payment={selectedPayment ? { ...selectedPayment, price: getCalculatePrice(selectedProduct.price, selectedPayment.charge) } : undefined}
           email={email}
           onConfirm={() => setShowSummary(false)}
         />
