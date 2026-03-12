@@ -21,9 +21,9 @@ func CreatePaymentRequest(
 	productTitle string,
 	gameName string,
 	expiredAt time.Time,
-) (string, error) {
+) (string, string, error) {
 	if config.AppConfig.MayarAPIKey == "" {
-		return "", errors.New("mayar api key not configured")
+		return "", "", errors.New("mayar api key not configured")
 	}
 
 	url := "https://api.mayar.id/hl/v1/payment/create"
@@ -58,16 +58,82 @@ func CreatePaymentRequest(
 
 	body, err := json.Marshal(payload)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
+	if err != nil {
+		return "", "", err
+	}
+
+	req.Header.Set("Authorization", "Bearer "+config.AppConfig.MayarAPIKey)
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", "", err
+	}
+	defer resp.Body.Close()
+
+	respBody, _ := io.ReadAll(resp.Body)
+
+	if resp.StatusCode >= 400 {
+		return "", "", fmt.Errorf("mayar api error: %s", string(respBody))
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(respBody, &result); err != nil {
+		return "", "", err
+	}
+
+	data, ok := result["data"]
+	if !ok {
+		return "", "", errors.New("no data in mayar response")
+	}
+	utils.Info("Mayar payment created", "data", data)
+	var transactionId string
+	switch d := data.(type) {
+	case []interface{}:
+		if len(d) > 0 {
+			if first, ok := d[0].(map[string]interface{}); ok {
+				if l, ok := first["transactionId"].(string); ok {
+					transactionId = l
+				}
+			}
+		}
+	case map[string]interface{}:
+		if l, ok := d["transactionId"].(string); ok {
+			transactionId = l
+		}
+	}
+
+	link := fmt.Sprintf("https://miruu-18287.mayar.shop/select-channel/%s", transactionId)
+	if transactionId == "" {
+		return "", "", errors.New("payment transactionId not found in response")
+	}
+
+	utils.Info("Mayar payment created", "order_id", mayarOrderID, "url", link, "transaction_id", transactionId)
+	return link, transactionId, nil
+}
+
+// GetPaymentStatus fetches the latest status of a payment from Mayar.
+func GetPaymentStatus(mayarOrderID string) (string, error) {
+	if config.AppConfig.MayarAPIKey == "" {
+		return "", errors.New("mayar api key not configured")
+	}
+
+	url := fmt.Sprintf("https://api.mayar.id/hl/v1/invoice/%s", mayarOrderID)
+	if config.AppConfig.IsDev() {
+		url = fmt.Sprintf("https://api.mayar.club/hl/v1/invoice/%s", mayarOrderID)
+	}
+
+	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return "", err
 	}
 
 	req.Header.Set("Authorization", "Bearer "+config.AppConfig.MayarAPIKey)
-	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
@@ -77,7 +143,6 @@ func CreatePaymentRequest(
 	defer resp.Body.Close()
 
 	respBody, _ := io.ReadAll(resp.Body)
-
 	if resp.StatusCode >= 400 {
 		return "", fmt.Errorf("mayar api error: %s", string(respBody))
 	}
@@ -87,34 +152,30 @@ func CreatePaymentRequest(
 		return "", err
 	}
 
+	fmt.Printf("Parsed response: %+v\n", result)
+
 	data, ok := result["data"]
 	if !ok {
 		return "", errors.New("no data in mayar response")
 	}
 
-	var link string
+	var status string
 	switch d := data.(type) {
 	case []interface{}:
 		if len(d) > 0 {
 			if first, ok := d[0].(map[string]interface{}); ok {
-				if l, ok := first["link"].(string); ok {
-					link = l
+				if s, ok := first["status"].(string); ok {
+					status = s
 				}
 			}
 		}
 	case map[string]interface{}:
-		if l, ok := d["link"].(string); ok {
-			link = l
+		if s, ok := d["status"].(string); ok {
+			status = s
 		}
 	}
 
-	link = fmt.Sprintf("https://miruu-18287.mayar.shop/select-channel/%s", mayarOrderID)
-	if link == "" {
-		return "", errors.New("payment link not found in response")
-	}
-
-	utils.Info("Mayar payment created", "order_id", mayarOrderID, "url", link)
-	return link, nil
+	return status, nil
 }
 
 // VerifySignature checks the integrity of the webhook payload.

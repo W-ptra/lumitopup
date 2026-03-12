@@ -31,7 +31,7 @@ func CreateTransaction(userID string, req dto.CreateTransactionRequest) (*dto.Tr
 	expiredAt := time.Now().Add(15 * time.Minute)
 
 	// 5. Call Mayar Payment Gateway
-	paymentURL, err := CreatePaymentRequest(
+	paymentURL, mayarTxID, err := CreatePaymentRequest(
 		internalTxID,
 		mayarOrderID,
 		finalAmount,
@@ -56,7 +56,7 @@ func CreateTransaction(userID string, req dto.CreateTransactionRequest) (*dto.Tr
 		ProductTitle:  product.Title,
 		Amount:        finalAmount,
 		PaymentMethod: "MAYAR", // Or keep req.PaymentMethod if frontend still sends it
-		MayarOrderID:  mayarOrderID,
+		MayarOrderID:  mayarTxID,
 		PaymentURL:    paymentURL,
 		PaymentToken:  snapToken,
 		QRString:      qrString,
@@ -113,12 +113,33 @@ func GetTransactionDetail(txID, userID string, isAdmin bool) (*dto.TransactionDe
 		return nil, errors.New("transaction not found")
 	}
 
-	// Lazy Expiry Check
-	if tx.Status == "PENDING" && time.Now().After(tx.ExpiredAt) {
-		tx.Status = "FAILED"
-		tx.FailureReason = "Payment window expired (15 minutes)"
-		database.DB.Save(&tx)
-		utils.Info("Transaction lazy-expired on read", "tx_id", tx.ID)
+	// Active Status Check & Sync (Layer against missing webhooks)
+	if tx.Status == "PENDING" {
+		if time.Now().After(tx.ExpiredAt) {
+			tx.Status = "FAILED"
+			tx.FailureReason = "Payment window expired (15 minutes)"
+			database.DB.Save(&tx)
+			utils.Info("Transaction lazy-expired on read", "tx_id", tx.ID)
+		} else {
+			// Sync with Mayar in case webhook didn't arrive
+			remoteStatus, err := GetPaymentStatus(tx.MayarOrderID)
+			if err == nil && remoteStatus != "" {
+				var internalStatus string
+				switch remoteStatus {
+				case "SUCCESS", "PAID", "paid":
+					internalStatus = "SUCCESS"
+				case "FAILED", "failed", "EXPIRED", "expired":
+					internalStatus = "FAILED"
+				}
+
+				if internalStatus != "" && internalStatus != tx.Status {
+					utils.Info("Syncing transaction status from Mayar API", "tx_id", tx.ID, "remote_status", remoteStatus)
+					UpdateFromWebhook(tx.MayarOrderID, internalStatus, "")
+					// Reload to get updated state for response
+					database.DB.First(&tx, "id = ?", tx.ID)
+				}
+			}
+		}
 	}
 
 	res := mapTransactionToDetailResponse(tx)

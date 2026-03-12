@@ -28,7 +28,21 @@ export default function VerticalNavbar() {
     >
       {/* Logo */}
       <div className="h-16 flex items-center justify-center">
-        <img src="/lumitopup-logo.png" className="w-14 h-10" alt="LumiTopUp Logo" />
+        <img 
+          src="/lummy-topup-logo.png" 
+          className="w-14 h-10" 
+          alt="LumiTopUp Logo" 
+          onError={(e) => {
+            (e.target as HTMLImageElement).style.display = 'none';
+            const parent = (e.target as HTMLElement).parentElement;
+            if (parent) {
+              const div = document.createElement('div');
+              div.className = "w-10 h-10 bg-[#7491F7] rounded-xl flex items-center justify-center text-white font-bold text-xl";
+              div.innerText = "L";
+              parent.appendChild(div);
+            }
+          }}
+        />
       </div>
 
       {/* Nav */}
@@ -63,7 +77,9 @@ export default function VerticalNavbar() {
               className="flex flex-col items-center gap-1 py-3 text-gray-500 hover:text-[#7491F7] hover:border-[#7491F7] hover:border-l-4 cursor-pointer"
               onClick={() => navigate("/profile")}
             >
-              <img src={user.image} className="w-8 h-8 rounded-full border" alt={user.name} />
+              <div className="w-8 h-8 rounded-full border bg-[#7491F7] flex items-center justify-center text-white font-bold text-sm uppercase">
+                {user.name ? user.name.charAt(0) : "?"}
+              </div>
               <span className="text-[10px] text-center truncate w-full px-1">{user.name}</span>
             </div>
             {/* Logout */}

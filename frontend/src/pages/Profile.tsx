@@ -62,11 +62,19 @@ function Profile() {
             <div className="absolute bottom-[-50%] left-[-5%] w-32 h-32 bg-white/5 rounded-full" />
 
             <div className="absolute -bottom-14 left-1/2 -translate-x-1/2 p-2 bg-white rounded-[2rem] shadow-xl">
-              <img
-                src={user.image}
-                alt="Profile"
-                className="w-28 h-28 rounded-[1.75rem] object-cover bg-gray-50 border border-gray-100"
-              />
+              <div className="w-28 h-28 rounded-[1.75rem] bg-[#7491F7] flex items-center justify-center text-white font-bold text-5xl uppercase overflow-hidden border-4 border-white">
+                {user.image ? (
+                  <img
+                    src={user.image}
+                    alt="Profile"
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                    }}
+                  />
+                ) : null}
+                {user.name ? user.name.charAt(0) : '?'}
+              </div>
             </div>
           </div>
 

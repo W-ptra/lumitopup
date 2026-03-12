@@ -2,12 +2,18 @@ package routes
 
 import (
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/logger"
+	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/w-ptra/lumitopup/internal/handlers"
 	"github.com/w-ptra/lumitopup/internal/middleware"
 )
 
 // Register attaches all application routes to the fiber engine.
 func Register(app *fiber.App) {
+	// Add Logger and Recover middleware
+	app.Use(logger.New())
+	app.Use(recover.New())
+
 	// Root Group
 	api := app.Group("/api/v1")
 

@@ -67,7 +67,19 @@ export default function Product() {
         {/* HEADER */}
         {game && (
           <div className="flex items-center gap-3">
-            <img src={game.image} className="w-14 h-14 md:w-20 md:h-20 rounded-xl border" alt={game.name} />
+            <div className="w-14 h-14 md:w-20 md:h-20 rounded-xl border bg-[#7491F7] flex items-center justify-center text-white font-bold text-2xl md:text-4xl uppercase overflow-hidden">
+                {game.image ? (
+                    <img 
+                        src={game.image} 
+                        className="w-full h-full object-cover" 
+                        alt={game.name} 
+                        onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                        }}
+                    />
+                ) : null}
+                {game.name.charAt(0)}
+            </div>
             <h1 className="text-lg md:text-2xl font-semibold">{game.name}</h1>
           </div>
         )}
