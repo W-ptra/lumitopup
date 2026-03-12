@@ -3,6 +3,8 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install
 COPY . .
+# Use .prod.env if it exists, otherwise use .env
+RUN if [ -f .prod.env ]; then cp .prod.env .env.production; fi
 RUN npm run build
 
 FROM nginx:alpine
