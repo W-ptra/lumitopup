@@ -31,31 +31,22 @@ function GameCard({ products }: ProductCardProps) {
             active:scale-[0.98]
           "
         >
-          <div className="w-full aspect-square overflow-hidden rounded-lg bg-gray-50 flex items-center justify-center">
-            {product.logo ? (
+          <div className="relative w-full aspect-square overflow-hidden rounded-lg bg-[#7491F7] flex items-center justify-center text-white font-bold text-3xl uppercase">
+            {product.title.charAt(0)}
+            {product.logo && (
               <img
                 src={product.logo}
                 alt={product.title}
                 className="
+                  absolute inset-0
                   w-full h-full object-cover
                   group-hover:scale-105
                   transition-transform duration-200
                 "
                 onError={(e) => {
-                  (e.target as HTMLImageElement).onerror = null; // prevent infinite loop
-                  (e.target as HTMLImageElement).src = ""; // Clear src
-                  (e.target as HTMLImageElement).parentElement?.classList.add("bg-[#7491F7]");
                   (e.target as HTMLImageElement).style.display = "none";
-                  const fallback = document.createElement("div");
-                  fallback.className = "text-white font-bold text-3xl uppercase";
-                  fallback.innerText = product.title.charAt(0);
-                  (e.target as HTMLImageElement).parentElement?.appendChild(fallback);
                 }}
               />
-            ) : (
-              <div className="w-full h-full bg-[#7491F7] flex items-center justify-center text-white font-bold text-3xl uppercase tracking-wider">
-                {product.title.charAt(0)}
-              </div>
             )}
           </div>
 

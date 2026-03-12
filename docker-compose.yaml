@@ -3,16 +3,18 @@ services:
     image: postgres:16-alpine
     restart: always
     environment:
-      POSTGRES_USER: xx
-      POSTGRES_PASSWORD: xx
-      POSTGRES_DB: xx
+      POSTGRES_USER: xxx
+      POSTGRES_PASSWORD: xxx
+      POSTGRES_DB: lummytopup
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U xx -d xx"]
+      test: ["CMD-SHELL", "pg_isready -U xxx -d lummytopup"]
       interval: 10s
       timeout: 5s
       retries: 5
+    ports:
+      - "5432:5432"
 
   backend:
     build:
@@ -47,7 +49,7 @@ services:
   cloudflared:
     image: cloudflare/cloudflared:latest
     restart: always
-    command: tunnel run --token XX
+    command: tunnel run --token xx
     depends_on:
       - api_gateway
 

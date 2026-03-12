@@ -77,8 +77,18 @@ export default function VerticalNavbar() {
               className="flex flex-col items-center gap-1 py-3 text-gray-500 hover:text-[#7491F7] hover:border-[#7491F7] hover:border-l-4 cursor-pointer"
               onClick={() => navigate("/profile")}
             >
-              <div className="w-8 h-8 rounded-full border bg-[#7491F7] flex items-center justify-center text-white font-bold text-sm uppercase">
+              <div className="relative w-8 h-8 rounded-full border bg-[#7491F7] flex items-center justify-center text-white font-bold text-sm uppercase overflow-hidden">
                 {user.name ? user.name.charAt(0) : "?"}
+                {user.image && (
+                  <img 
+                    src={user.image} 
+                    className="absolute inset-0 w-full h-full object-cover" 
+                    alt={user.name} 
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                    }}
+                  />
+                )}
               </div>
               <span className="text-[10px] text-center truncate w-full px-1">{user.name}</span>
             </div>
